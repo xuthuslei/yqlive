@@ -54,6 +54,14 @@ private:
 	AVOutputFormat *oformat;
 	AVCodec *video_codec, *audio_codec;
 	int video_framerate;
+	int       src_nb_samples;
+	uint8_t **src_samples_data;
+	int       src_samples_linesize;
+	//AVAudioResampleContext *swr_ctx;
+	int max_dst_nb_samples;
+	uint8_t **dst_samples_data;
+	int       dst_samples_linesize;
+	int       dst_samples_size;
 	
 	unsigned long audio_input_leftover_samples;
 	
@@ -99,6 +107,7 @@ VideoRecorderImpl::VideoRecorderImpl()
 	audio_st = NULL;
 
 	audio_input_leftover_samples = 0;
+	//swr_ctx = NULL;
 
 	video_outbuf = NULL;
 	video_st = NULL;
@@ -184,7 +193,10 @@ AVStream *VideoRecorderImpl::add_audio_stream(enum AVCodecID codec_id)
 	c->sample_fmt = audio_sample_format;
 	c->bit_rate = audio_bit_rate;
 	c->sample_rate = audio_sample_rate;
-	c->channels = audio_channels;
+	c->channel_layout = AV_CH_LAYOUT_MONO;//select_channel_layout(*codec);
+	c->time_base = (AVRational){1, c->sample_rate};	
+	//c->channels = audio_channels;
+	c->channels = av_get_channel_layout_nb_channels(c->channel_layout);
 	c->profile = FF_PROFILE_AAC_LOW;
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
@@ -192,7 +204,7 @@ AVStream *VideoRecorderImpl::add_audio_stream(enum AVCodecID codec_id)
 
 	return st;
 }
-
+#if 0
 void VideoRecorderImpl::open_audio()
 {
 	AVCodecContext *c;
@@ -218,6 +230,102 @@ void VideoRecorderImpl::open_audio()
 	audio_input_leftover_samples = 0;
 
 }
+#endif
+void VideoRecorderImpl::open_audio()
+{
+    AVCodecContext *c;
+    AVCodec *codec;
+    int ret;
+    c = audio_st->codec;
+    c->strict_std_compliance = -2;
+    /* open it */
+    ret = avcodec_open2(c, audio_codec, NULL);
+    if (ret == AVERROR_EXPERIMENTAL) {
+    	 LOGE( "experimental codec\n");
+	}
+    if (ret < 0) {
+       LOGE( "could not open codec\n");
+        return;
+    }
+
+
+    audio_outbuf_size = 10000;
+    audio_outbuf = (uint8_t *)av_malloc(audio_outbuf_size);
+
+    /* ugly hack for PCM codecs (will be removed ASAP with new PCM
+       support to compute the input frame size in samples */
+    if (c->frame_size <= 1) {
+        audio_input_frame_size = audio_outbuf_size / c->channels;
+        switch(audio_st->codec->codec_id) {
+        case AV_CODEC_ID_PCM_S16LE:
+        case AV_CODEC_ID_PCM_S16BE:
+        case AV_CODEC_ID_PCM_U16LE:
+        case AV_CODEC_ID_PCM_U16BE:
+            audio_input_frame_size >>= 1;
+            break;
+        default:
+            break;
+        }
+    } else {
+        audio_input_frame_size = c->frame_size;
+    }
+
+
+    // init resampling
+    src_nb_samples = c->codec->capabilities & CODEC_CAP_VARIABLE_FRAME_SIZE ?10000 : c->frame_size;
+
+	ret = av_samples_alloc_array_and_samples(&src_samples_data,
+			&src_samples_linesize, c->channels, src_nb_samples, AV_SAMPLE_FMT_S16,0);
+	if (ret < 0) {
+		LOGE("Could not allocate source samples\n");
+		return;
+	}
+
+       /* create resampler context */
+       if (c->sample_fmt != AV_SAMPLE_FMT_S16) {
+	   	LOGE("Could not be here\n");
+		return;
+	   	#if 0
+           swr_ctx =  avresample_alloc_context();
+           if (!swr_ctx) {
+        	   LOGE("Could not allocate resampler context\n");
+               return;
+           }
+
+           /* set options */
+           av_opt_set_int       (swr_ctx, "in_channel_count",   c->channels,       0);
+           av_opt_set_int       (swr_ctx, "in_channel_layout",   c->channel_layout,       0);
+           av_opt_set_int       (swr_ctx, "in_sample_rate",     c->sample_rate,    0);
+           av_opt_set_int		(swr_ctx, "in_sample_fmt",      AV_SAMPLE_FMT_S16, 0);
+           av_opt_set_int       (swr_ctx, "out_channel_count",  c->channels,       0);
+           av_opt_set_int       (swr_ctx, "out_sample_rate",    c->sample_rate,    0);
+           av_opt_set_int       (swr_ctx, "out_channel_layout",   c->channel_layout,       0);
+           av_opt_set_int		(swr_ctx, "out_sample_fmt",     c->sample_fmt, 0);//av_opt_set_sample_fmt
+
+
+           /* initialize the resampling context */
+           if ((ret =  avresample_open(swr_ctx)) < 0) {
+        	   LOGE("Failed to initialize the resampling context\n");
+               return;
+           }
+		   #endif
+       }
+
+       /* compute the number of converted samples: buffering is avoided
+        * ensuring that the output buffer will contain at least all the
+        * converted input samples */
+       max_dst_nb_samples = src_nb_samples;
+       ret = av_samples_alloc_array_and_samples(&dst_samples_data, &dst_samples_linesize, c->channels,
+                                                max_dst_nb_samples, c->sample_fmt, 0);
+       if (ret < 0) {
+           LOGE("Could not allocate destination samples\n");
+           return;
+       }
+       dst_samples_size = av_samples_get_buffer_size(NULL, c->channels, max_dst_nb_samples,
+                                                     c->sample_fmt, 0);
+
+}
+
 
 AVStream *VideoRecorderImpl::add_video_stream(enum AVCodecID codec_id)
 {
@@ -387,13 +495,13 @@ void VideoRecorderImpl::open_video()
 
 	*((AVPicture *)tmp_picture) = dst_picture;
 	
-	if (c->pix_fmt != AV_PIX_FMT_YUV420P) {
-		ret = avpicture_alloc(&src_picture, AV_PIX_FMT_YUV420P, c->width, c->height);
+	if (video_pixfmt != AV_PIX_FMT_YUV420P) {
+		ret = avpicture_alloc(&src_picture, video_pixfmt, c->width, c->height);
         if (ret < 0) {
             LOGE("Could not initialize sws context\n");
 			return;
         }
-		img_convert_ctx = sws_getContext(video_width, video_height, video_pixfmt, c->width, c->height, PIX_FMT_YUV420P, /*SWS_BICUBIC*/SWS_FAST_BILINEAR, NULL, NULL, NULL);
+		img_convert_ctx = sws_getContext(video_width, video_height, video_pixfmt, c->width, c->height, AV_PIX_FMT_YUV420P, /*SWS_BICUBIC*/SWS_FAST_BILINEAR, NULL, NULL, NULL);
 		if(img_convert_ctx==NULL) {
 			LOGE("Could not initialize sws context\n");
 			return;
@@ -554,7 +662,7 @@ bool VideoRecorderImpl::Start()
 {
 	return true;
 }
-
+#if 0
 void VideoRecorderImpl::SupplyAudioSamples(const void *sampleData, unsigned long len)
 {
 	// check whether there is any audio stream (hasAudio=true)
@@ -644,6 +752,98 @@ void VideoRecorderImpl::SupplyAudioSamples(const void *sampleData, unsigned long
 	}
 	//avcodec_free_frame(&frame);
 	return;
+}
+#endif
+void VideoRecorderImpl::SupplyAudioSamples(const void *sampleData, unsigned long len)
+{
+	int got_packet, ret, dst_nb_samples;
+
+	AVStream *st = audio_st;
+	AVPacket pkt;
+	AVCodecContext *c = st->codec;
+
+	AVFrame *audioframe = av_frame_alloc();
+	audioframe->nb_samples = c->frame_size;
+	audioframe->format = c->sample_fmt;
+	audioframe->channel_layout = c->channel_layout;
+
+	int16_t* bufferShortPtr = (int16_t *)sampleData;
+	uint8_t * bufferPtr = (uint8_t *) bufferShortPtr;
+
+	int buffer_size = av_samples_get_buffer_size(NULL, c->channels,
+			c->frame_size, c->sample_fmt, 0);
+
+	memcpy((int16_t *) src_samples_data[0], bufferShortPtr, len * 2);
+
+	/* convert samples from native format to destination codec format, using the resampler */
+#if 0
+	if (swr_ctx) {
+		LOGE("can't be here");
+		return;
+
+		/* compute destination number of samples */
+		dst_nb_samples = av_rescale_rnd(
+				avresample_get_delay(swr_ctx) + src_nb_samples,
+				c->sample_rate, c->sample_rate, AV_ROUND_UP);
+		if (dst_nb_samples > max_dst_nb_samples) {
+			av_free(dst_samples_data[0]);
+			ret = av_samples_alloc(dst_samples_data, &dst_samples_linesize,
+					c->channels, dst_nb_samples, c->sample_fmt, 0);
+			if (ret < 0)
+				return;
+			max_dst_nb_samples = dst_nb_samples;
+			dst_samples_size = av_samples_get_buffer_size(NULL, c->channels,
+					dst_nb_samples, c->sample_fmt, 0);
+		}
+
+		/* convert to destination format */
+		ret = avresample_convert(swr_ctx, dst_samples_data, 0,
+				dst_nb_samples, (uint8_t **) src_samples_data, 0,
+				src_nb_samples);
+
+		if (ret < 0) {
+			LOGE("Error while converting\n");
+			return;
+		}
+
+	} else
+    #endif
+	    {
+		dst_samples_data[0] = src_samples_data[0];
+		dst_nb_samples = src_nb_samples;
+	}
+
+	audioframe->nb_samples = dst_nb_samples;
+	/* setup the data pointers in the AVFrame */
+	ret = avcodec_fill_audio_frame(audioframe, c->channels, c->sample_fmt,
+			dst_samples_data[0], dst_samples_size, 0);
+
+	av_init_packet(&pkt);
+	pkt.data = NULL; // packet data will be allocated by the encoder
+	pkt.size = 0;
+
+	if (avcodec_encode_audio2(c, &pkt, audioframe, &got_packet) < 0) {
+		LOGE("Error encoding audio frame");
+		return;;
+	}
+
+	if (got_packet) {
+		pkt.stream_index = st->index;
+		if (pkt.pts != AV_NOPTS_VALUE)
+			pkt.pts = av_rescale_q(pkt.pts, st->codec->time_base,st->time_base);
+		if (pkt.dts != AV_NOPTS_VALUE)
+			pkt.dts = av_rescale_q(pkt.dts, st->codec->time_base,st->time_base);
+		if (c && c->coded_frame && c->coded_frame->key_frame)
+			pkt.flags |= AV_PKT_FLAG_KEY;
+
+		/* Write the compressed frame to the media file. */
+		ret = av_interleaved_write_frame(oc, &pkt);
+		av_free_packet(&pkt);
+	}else{
+		LOG("Audio Frame Buffered");
+	}
+	//	av_freep(&samples);
+	av_frame_free(&audioframe);
 }
 
 void VideoRecorderImpl::SupplyVideoFrame(const void *frameData, unsigned long numBytes, unsigned long timestamp)
