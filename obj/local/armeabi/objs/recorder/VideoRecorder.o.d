@@ -63,7 +63,13 @@ obj/local/armeabi/objs/recorder/VideoRecorder.o: jni/VideoRecorder.cpp \
  jni/include/libavutil/common.h jni/include/libavformat/avio.h \
  jni/include/libavformat/version.h jni/include/libswscale/swscale.h \
  jni/include/libswscale/version.h jni/include/libswresample/swresample.h \
- jni/include/libswresample/version.h
+ jni/include/libswresample/version.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/pthread.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/signal.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/signal.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm-generic/signal.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/sigcontext.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sched.h
 
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/android/log.h:
 
@@ -232,3 +238,15 @@ jni/include/libswscale/version.h:
 jni/include/libswresample/swresample.h:
 
 jni/include/libswresample/version.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/pthread.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/signal.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/signal.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm-generic/signal.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/sigcontext.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sched.h:

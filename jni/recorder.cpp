@@ -48,8 +48,10 @@ jint Java_com_yiqingart_live_MainActivity_startRecorder( JNIEnv* env, jobject th
     recorder = AVR::VideoRecorder::New();
 
     recorder->SetAudioOptions(AVR::AudioSampleFormatS16, 2, 8000, 16000);
-    recorder->SetVideoOptions(AVR::VideoFrameFormatNV21, 320, 240, 100000, 5);
-    recorder->Open("/mnt/sdcard/test.m3u8", "hls", true, true);
+    recorder->SetVideoOptions(AVR::VideoFrameFormatNV21, 320, 240, 80000, 10);
+    //recorder->Open("/mnt/sdcard/test.m3u8", "hls", true, true);
+    //recorder->Open("/mnt/sdcard/test.ts", NULL, true, true);
+    recorder->Open("osd://192.168.1.105:8080/file/video/test.m3u8", "hls", true, true);
 
     return 0;
 }

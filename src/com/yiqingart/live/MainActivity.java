@@ -1,6 +1,7 @@
 package com.yiqingart.live;
 
 import java.io.IOException;
+import java.nio.ShortBuffer;
 
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
@@ -42,7 +43,7 @@ public class MainActivity extends Activity implements OnClickListener {
     private int sampleAudioRateInHz = 8000;
     private int imageWidth = 320;
     private int imageHeight = 240;
-    private int frameRate = 15;
+    private int frameRate = 10;
 
     /* audio data getting thread */
     private AudioRecord audioRecord;
@@ -225,7 +226,28 @@ public class MainActivity extends Activity implements OnClickListener {
    // audio thread, gets and encodes audio data
    //---------------------------------------------
    class AudioRecordRunnable implements Runnable {
+       short[] pending = new short[0];
+       private void writeAudioSamples(short[] buffer, int bufferReadResult) {
 
+           int pendingArrLength = pending.length;
+           short[] newArray = new short[bufferReadResult + pendingArrLength];
+
+           System.arraycopy(pending, 0, newArray, 0, pendingArrLength);
+           System.arraycopy(buffer, 0, newArray, pendingArrLength,bufferReadResult);
+
+           int len = newArray.length;
+           int q = Math.abs(len / 1024);
+           int r = len % 1024;
+
+           ShortBuffer shortBuffer = ShortBuffer.wrap(newArray);
+           for (int i = 0; i < q && recording; i++) {
+               short dst[] = new short[1024];
+               shortBuffer.get(dst);
+               SupplyAudioSamples(dst, dst.length);
+           }
+           pending = new short[r];
+           shortBuffer.get(pending);
+       }
        @Override
        public void run() {
            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
@@ -256,7 +278,7 @@ public class MainActivity extends Activity implements OnClickListener {
                    // Why?  Good question...
                    if (recording) {
                        try {
-                           SupplyAudioSamples(audioData, bufferReadResult);
+                           writeAudioSamples(audioData, bufferReadResult);
                            //Log.v(LOG_TAG,"recording " + 1024*i + " to " + 1024*i+1024);
                        } catch (Exception e) {
                            Log.v(LOG_TAG,e.getMessage());

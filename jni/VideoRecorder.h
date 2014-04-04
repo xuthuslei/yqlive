@@ -56,7 +56,7 @@ public:
 	virtual bool Start()=0;
 	
 	// Supply a video frame
-	virtual void SupplyVideoFrame(const void* frame,unsigned long numBytes,unsigned long timestamp)=0;
+	virtual void SupplyVideoFrame(const void* frame,unsigned long numBytes,long long timestamp)=0;
 	// Supply audio samples
 	virtual void SupplyAudioSamples(const void* samples,unsigned long numSamples)=0;
 };

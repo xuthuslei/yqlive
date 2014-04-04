@@ -12,6 +12,8 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
+#include <pthread.h>
+
 }
 
 // Do not use C++ exceptions, templates, or RTTI
@@ -31,7 +33,7 @@ public:
 	
 	bool Start();
 
-	void SupplyVideoFrame(const void *frame, unsigned long numBytes, unsigned long timestamp);
+	void SupplyVideoFrame(const void *frame, unsigned long numBytes, long long timestamp);
 	void SupplyAudioSamples(const void *samples, unsigned long numSamples);
 
 private:	
@@ -43,8 +45,10 @@ private:
 	AVFrame *alloc_picture(enum PixelFormat pix_fmt, int width, int height);
 	void open_video();
 	void write_video_frame(AVStream *st);
+	pthread_mutex_t mtx ;  
 	
 	// audio related vars
+	long long framecount;
 	AVFrame *frame;
 	int16_t *samples;
 	uint8_t *audio_outbuf;
@@ -117,6 +121,7 @@ VideoRecorderImpl::VideoRecorderImpl()
 	oformat = NULL;
 
 	oc = NULL;
+	pthread_mutex_init(&mtx, NULL);
 }
 
 VideoRecorderImpl::~VideoRecorderImpl()
@@ -127,6 +132,7 @@ VideoRecorderImpl::~VideoRecorderImpl()
 bool VideoRecorderImpl::Open(const char *mp4file, const char *format, bool hasAudio, bool dbg)
 {	
 	//av_register_all();
+	AVDictionary *opts = NULL;
 
 	oformat = NULL;
 
@@ -160,12 +166,14 @@ bool VideoRecorderImpl::Open(const char *mp4file, const char *format, bool hasAu
 			return false;
 		}
 	}
+	av_dict_set(&opts, "hls_time", "10", 0);
+	av_dict_set(&opts, "hls_list_size", "3", 0);
 	
-	if(avformat_write_header(oc, NULL)<0)
+	if(avformat_write_header(oc, &opts)<0)
 	{
 	    return false;
 	}
-	
+	av_dict_free(&opts);
 	return true;
 }
 
@@ -248,6 +256,7 @@ void VideoRecorderImpl::open_audio()
         return;
     }
 
+	framecount = 0;
 
     audio_outbuf_size = 10000;
     audio_outbuf = (uint8_t *)av_malloc(audio_outbuf_size);
@@ -347,6 +356,8 @@ AVStream *VideoRecorderImpl::add_video_stream(enum AVCodecID codec_id)
 	st->id = oc->nb_streams-1;
 
 	c = st->codec;
+	av_opt_set(c->priv_data, "preset", "superfast", 0);
+	av_opt_set(c->priv_data, "x264opts", "rc_lookahead=0", 0);
 	c->codec_id = codec_id;
 	c->codec_type = AVMEDIA_TYPE_VIDEO;
 
@@ -357,7 +368,7 @@ AVStream *VideoRecorderImpl::add_video_stream(enum AVCodecID codec_id)
 	c->time_base.num = 1;
 	c->time_base.den = video_framerate;
 	c->pix_fmt = PIX_FMT_YUV420P;		// we convert everything to PIX_FMT_YUV420P
-	c->gop_size = 15;
+	c->gop_size = 5*video_framerate;
 	c->max_b_frames = 0;
 
 	/* h264 specific stuff */
@@ -606,9 +617,9 @@ bool VideoRecorderImpl::Close()
 	if(audio_outbuf)
 		av_free(audio_outbuf);
 #endif
-	if (!(oformat->flags & AVFMT_NOFILE))
-			/* Close the output file. */
-			avio_close(oc->pb);
+	//if (!(oformat->flags & AVFMT_NOFILE))
+	//		/* Close the output file. */
+	//		avio_close(oc->pb);
 	LOGE("closeing %d\n",__LINE__);
 
 	avformat_free_context(oc);
@@ -812,6 +823,8 @@ void VideoRecorderImpl::SupplyAudioSamples(const void *sampleData, unsigned long
 		dst_samples_data[0] = src_samples_data[0];
 		dst_nb_samples = src_nb_samples;
 	}
+	framecount+= dst_nb_samples;
+	audioframe->pts = framecount;
 
 	audioframe->nb_samples = dst_nb_samples;
 	/* setup the data pointers in the AVFrame */
@@ -826,6 +839,7 @@ void VideoRecorderImpl::SupplyAudioSamples(const void *sampleData, unsigned long
 		LOGE("Error encoding audio frame");
 		return;;
 	}
+	//LOG("audio audioframe->pts:%lld count:%lld pkt.pts:%lld", audioframe->pts, framecount,  pkt.pts);
 
 	if (got_packet) {
 		pkt.stream_index = st->index;
@@ -833,26 +847,33 @@ void VideoRecorderImpl::SupplyAudioSamples(const void *sampleData, unsigned long
 			pkt.pts = av_rescale_q(pkt.pts, st->codec->time_base,st->time_base);
 		if (pkt.dts != AV_NOPTS_VALUE)
 			pkt.dts = av_rescale_q(pkt.dts, st->codec->time_base,st->time_base);
-		if (c && c->coded_frame && c->coded_frame->key_frame)
-			pkt.flags |= AV_PKT_FLAG_KEY;
+		//LOG("audio pkt.pts:%lld pkt.dts:%lld", pkt.pts, pkt.dts);
 
 		/* Write the compressed frame to the media file. */
+		pthread_mutex_lock(&mtx);
 		ret = av_interleaved_write_frame(oc, &pkt);
+		pthread_mutex_unlock(&mtx); 
 		av_free_packet(&pkt);
 	}else{
-		LOG("Audio Frame Buffered");
+		//LOG("Audio Frame Buffered");
 	}
 	//	av_freep(&samples);
 	av_frame_free(&audioframe);
 }
 
-void VideoRecorderImpl::SupplyVideoFrame(const void *frameData, unsigned long numBytes, unsigned long timestamp)
+void VideoRecorderImpl::SupplyVideoFrame(const void *frameData, unsigned long numBytes, long long timestamp)
 {
 	static AVPacket pkt;
 	int ret, got_packet = 0;
+	long long tempPts;
 		
 	if(!video_st) {
 		LOGE("tried to SupplyVideoFrame when no video stream was present\n");
+		return;
+	}
+	tempPts = timestamp*video_framerate/1000000;
+	if(tmp_picture->pts >=tempPts){
+		LOGE("SupplyVideoFrame pts old\n");
 		return;
 	}
 
@@ -883,25 +904,32 @@ void VideoRecorderImpl::SupplyVideoFrame(const void *frameData, unsigned long nu
         av_init_packet(&pkt);
 		pkt.data = NULL;	// packet data will be allocated by the encoder
 		pkt.size = 0;
-		tmp_picture->pts+=1;
-
+		
         /* encode the image */
         ret = avcodec_encode_video2(c, &pkt, tmp_picture, &got_packet);
         if (ret < 0) {
             LOGE("avcodec_encode_video2 error %d\n", ret);
 			return;
         }
-		
-        /* If size is zero, it means the image was buffered. */
-        //LOG("avcodec_encode_video2 ret:%d got_packet:%d size:%d\n", ret, got_packet, pkt.size);
-        if (got_packet) {
-			pkt.pts = av_rescale_q(pkt.pts, video_st->codec->time_base, video_st->time_base);
-			pkt.dts = av_rescale_q(pkt.dts, video_st->codec->time_base, video_st->time_base);
+		/* If size is zero, it means the image was buffered. */
+        //LOG("avcodec_encode_video2 ret:%d got_packet:%d size:%d pts:%lld tempPts:%lld\n", ret, got_packet, pkt.size, tmp_picture->pts, tempPts);
+		tmp_picture->pts++;
+		if (got_packet) {
+			if (pkt.pts != AV_NOPTS_VALUE) {
+				pkt.pts = av_rescale_q(tempPts, video_st->codec->time_base, video_st->time_base);
+			}
+			if (pkt.dts != AV_NOPTS_VALUE) {
+				pkt.dts = av_rescale_q(tempPts, video_st->codec->time_base, video_st->time_base);
+			}
+			//pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base, video_st->time_base);
+			//LOG("video pkt.pts:%lld pkt.dts:%lld", pkt.pts, pkt.dts);
 			
             pkt.stream_index = video_st->index;
 
             /* Write the compressed frame to the media file. */
+			pthread_mutex_lock(&mtx);
             ret = av_interleaved_write_frame(oc, &pkt);
+			pthread_mutex_unlock(&mtx); 
 			av_free_packet(&pkt);
         } else {
             ret = 0;
