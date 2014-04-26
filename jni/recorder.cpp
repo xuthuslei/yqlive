@@ -48,10 +48,11 @@ jint Java_com_yiqingart_live_MainActivity_startRecorder( JNIEnv* env, jobject th
     recorder = AVR::VideoRecorder::New();
 
     recorder->SetAudioOptions(AVR::AudioSampleFormatS16, 2, 8000, 16000);
-    recorder->SetVideoOptions(AVR::VideoFrameFormatNV21, 320, 240, 80000, 10);
+    //recorder->SetVideoOptions(AVR::VideoFrameFormatNV21, 640, 480, 140000, 10);
+    recorder->SetVideoOptions(AVR::VideoFrameFormatNV21, 640, 480, 140000, 10);
     //recorder->Open("/mnt/sdcard/test.m3u8", "hls", true, true);
     //recorder->Open("/mnt/sdcard/test.ts", NULL, true, true);
-    recorder->Open("osd://192.168.1.105:8080/file/video/test.m3u8", "hls", true, true);
+    recorder->Open("osd://live.yiqingart.com/file/video/test.m3u8", "hls", true, true);
 
     return 0;
 }
@@ -60,16 +61,18 @@ jint Java_com_yiqingart_live_MainActivity_stopRecorder(JNIEnv* env,
         jobject thiz) {
     __android_log_print(ANDROID_LOG_INFO, "JNIMsg", "stopRecorder");
     //stopWorker();
-    isStop = 1;
     if(recorder){
         recorder->Close();
     }
+    isStop = 1;
+    delete recorder;
+    recorder = NULL;
     return 0;
 }
 jint Java_com_yiqingart_live_MainActivity_SupplyAudioSamples( JNIEnv* env, jobject thiz, jshortArray buffer, jlong len )
 {
     short * inbuffer = NULL;
-    __android_log_print(ANDROID_LOG_INFO, "JNIMsg", "SupplyAudioSamples");
+    //__android_log_print(ANDROID_LOG_INFO, "JNIMsg", "SupplyAudioSamples");
     inbuffer = ( short *)env->GetShortArrayElements(buffer, 0);
     if(recorder){
         recorder->SupplyAudioSamples(inbuffer, (long)len);
@@ -84,7 +87,7 @@ jint Java_com_yiqingart_live_MainActivity_SupplyVideoFrame( JNIEnv* env, jobject
     inbuffer = ( char *)env->GetByteArrayElements(buffer, 0);
 
     if(recorder){
-        recorder->SupplyVideoFrame(inbuffer, (long)len, (long)timestamp);
+        recorder->SupplyVideoFrame(inbuffer, (long)len, timestamp);
     }
     env->ReleaseByteArrayElements(buffer, (jbyte*)inbuffer, 0);
     return 0;

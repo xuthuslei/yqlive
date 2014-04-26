@@ -41,8 +41,8 @@ public class MainActivity extends Activity implements OnClickListener {
     private boolean isPreviewOn = false;
 
     private int sampleAudioRateInHz = 8000;
-    private int imageWidth = 320;
-    private int imageHeight = 240;
+    private int imageWidth = 640;
+    private int imageHeight = 480;
     private int frameRate = 10;
 
     /* audio data getting thread */
@@ -273,7 +273,7 @@ public class MainActivity extends Activity implements OnClickListener {
                //Log.v(LOG_TAG,"recording? " + recording);
                bufferReadResult = audioRecord.read(audioData, 0, audioData.length);
                if (bufferReadResult > 0) {
-                   Log.v(LOG_TAG,"bufferReadResult: " + bufferReadResult);
+                   //Log.v(LOG_TAG,"bufferReadResult: " + bufferReadResult);
                    // If "recording" isn't true when start this thread, it never get's set according to this if statement...!!!
                    // Why?  Good question...
                    if (recording) {
@@ -326,6 +326,10 @@ public class MainActivity extends Activity implements OnClickListener {
             startTime = System.currentTimeMillis();
             recording = true;
             //createAudioRecord();
+//            if(audioThread == null){
+//                audioThread = new Thread(audioRecordRunnable);
+//            }
+            runAudioThread = true;
             audioThread.start();
 
         } catch (Exception e) {
@@ -336,11 +340,15 @@ public class MainActivity extends Activity implements OnClickListener {
     public void stopRecording() {
 
         runAudioThread = false;
-
-        if (recording) {
+         if (recording) {
             recording = false;
             Log.v(LOG_TAG,"Finishing recording, calling stop and release on recorder");
             try {
+                //audioThread.stop();
+                audioThread.join();
+                audioRecordRunnable = new AudioRecordRunnable();
+                audioThread = new Thread(audioRecordRunnable);
+                Log.v(LOG_TAG,"audioThread stoped");
                 stopRecorder();
             } catch (Exception e) {
                 e.printStackTrace();
