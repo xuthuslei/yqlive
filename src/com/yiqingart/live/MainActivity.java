@@ -378,6 +378,7 @@ public class MainActivity extends Activity implements OnClickListener {
 
         @Override
         public void surfaceCreated(SurfaceHolder holder) {
+            Log.v(LOG_TAG,"surfaceCreated");
             try {
                 stopPreview();
                 mCamera.setPreviewDisplay(holder);
@@ -401,6 +402,7 @@ public class MainActivity extends Activity implements OnClickListener {
 
         @Override
         public void surfaceDestroyed(SurfaceHolder holder) {
+            Log.v(LOG_TAG,"surfaceDestroyed");
             try {
                 mHolder.addCallback(null);
                 mCamera.setPreviewCallback(null);
@@ -410,6 +412,7 @@ public class MainActivity extends Activity implements OnClickListener {
         }
 
         public void startPreview() {
+            Log.v(LOG_TAG,"startPreview");
             if (!isPreviewOn && mCamera != null) {
                 isPreviewOn = true;
                 mCamera.startPreview();
@@ -417,6 +420,7 @@ public class MainActivity extends Activity implements OnClickListener {
         }
 
         public void stopPreview() {
+            Log.v(LOG_TAG,"stopPreview");
             if (isPreviewOn && mCamera != null) {
                 isPreviewOn = false;
                 mCamera.stopPreview();
