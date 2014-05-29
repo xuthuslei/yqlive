@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 jint Java_com_yiqingart_live_MainActivity_initRecorder( JNIEnv* env, jobject thiz );
-jint Java_com_yiqingart_live_MainActivity_startRecorder( JNIEnv* env, jobject thiz );
+jint Java_com_yiqingart_live_MainActivity_startRecorder( JNIEnv* env, jobject thiz, jstring url, jstring videoSpeed, jint videoWidth, jint videoHeight, jint videoBitrate);
 jint Java_com_yiqingart_live_MainActivity_stopRecorder( JNIEnv* env, jobject thiz );
 jint Java_com_yiqingart_live_MainActivity_SupplyAudioSamples( JNIEnv* env, jobject thiz, jshortArray buffer,  jlong len );
 jint Java_com_yiqingart_live_MainActivity_SupplyVideoFrame( JNIEnv* env, jobject thiz, jbyteArray buffer,  jlong len, jlong timestamp );
@@ -22,6 +22,9 @@ int stopWorker();
 void log_callback(void* ptr, int level, const char* fmt, va_list vl);
 static int decode_interrupt_cb(void *ctx);
 extern const AVIOInterruptCB int_cb;
+void ChangeHttpInfo(int level, const char * info);
+static double now_ms(void);
+
 #ifdef __cplusplus
 }
 #endif

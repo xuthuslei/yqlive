@@ -44,7 +44,7 @@ public:
 	// Return true on success, false on failure
 
 	// Call these first
-	virtual bool SetVideoOptions(VideoFrameFormat fmt,int width,int height,unsigned long bitrate, int framerate)=0;
+	virtual bool SetVideoOptions(VideoFrameFormat fmt,int width,int height,unsigned long bitrate, int framerate, const char *speed)=0;
 	virtual bool SetAudioOptions(AudioSampleFormat fmt,int channels,unsigned long samplerate,unsigned long bitrate)=0;
 
 	// Call after SetVideoOptions/SetAudioOptions
@@ -59,6 +59,7 @@ public:
 	virtual void SupplyVideoFrame(const void* frame,unsigned long numBytes,long long timestamp)=0;
 	// Supply audio samples
 	virtual void SupplyAudioSamples(const void* samples,unsigned long numSamples)=0;
+	virtual long long getPts()=0;
 };
 
 } // namespace AVR

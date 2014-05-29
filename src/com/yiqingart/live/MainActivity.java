@@ -25,6 +25,7 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity implements OnClickListener {
@@ -43,8 +44,14 @@ public class MainActivity extends Activity implements OnClickListener {
     private int sampleAudioRateInHz = 8000;
     private int imageWidth = 640;
     private int imageHeight = 480;
+    private int setimageWidth = 640;
+    private int setimageHeight = 480;
     private int frameRate = 10;
-
+    private int videoBitrate = 150000;
+    private String x264Speed = "faster";
+    private String httpInfo = "0:0";
+    private String ffmpegInfo = ":0";
+    private int room = 1;
     /* audio data getting thread */
     private AudioRecord audioRecord;
     private AudioRecordRunnable audioRecordRunnable;
@@ -67,6 +74,12 @@ public class MainActivity extends Activity implements OnClickListener {
     private final int live_height = 480;
     private int screenWidth, screenHeight;
     private Button btnRecorderControl;
+    private Button btnRoom;
+    private Button btnVideoSize;
+    private Button btnVideoSpeed;
+    private Button btnVideoBitrate;
+    private TextView tvRecorderHttpInfo;
+    private TextView tvRecorderFmpegInfo;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -143,7 +156,24 @@ public class MainActivity extends Activity implements OnClickListener {
         btnRecorderControl = (Button) findViewById(R.id.recorder_control);
         btnRecorderControl.setText("开始直播");
         btnRecorderControl.setOnClickListener(this);
-
+        
+        btnRoom =  (Button) findViewById(R.id.room);
+        btnRoom.setText("room"+room);
+        
+        btnVideoSize =  (Button) findViewById(R.id.video_size);
+        btnVideoSize.setText(setimageWidth+"X"+setimageHeight);
+        //btnVideoSize.setOnClickListener(this);
+        
+        btnVideoSpeed =  (Button) findViewById(R.id.video_speed);
+        btnVideoSpeed.setText(x264Speed);
+        
+        btnVideoBitrate =  (Button) findViewById(R.id.video_bitrate);
+        btnVideoBitrate.setText(""+videoBitrate/1000);
+        
+        tvRecorderHttpInfo = (TextView)findViewById(R.id.recorder_http_info);
+        tvRecorderHttpInfo.setText("0:0");
+        tvRecorderFmpegInfo = (TextView)findViewById(R.id.recorder_ffmpeg_info);
+        tvRecorderFmpegInfo.setText(":0");
         /* add camera view */
         int display_width_d = (int) (1.0 * bg_screen_width * screenWidth / bg_width);
         int display_height_d = (int) (1.0 * bg_screen_height * screenHeight / bg_height);
@@ -163,7 +193,7 @@ public class MainActivity extends Activity implements OnClickListener {
         Log.i(LOG_TAG, "cameara open");
         cameraView = new CameraView(this, cameraDevice);
         topLayout.addView(cameraView, layoutParam);
-        Log.i(LOG_TAG, "cameara preview start: OK");
+        Log.i(LOG_TAG, "cameara preview start: OK");        
     }
 
     private void initRecording() {
@@ -244,6 +274,7 @@ public class MainActivity extends Activity implements OnClickListener {
                short dst[] = new short[1024];
                shortBuffer.get(dst);
                SupplyAudioSamples(dst, dst.length);
+               //tvRecorderFmpegInfo.setText(":"+pts);
            }
            pending = new short[r];
            shortBuffer.get(pending);
@@ -298,6 +329,76 @@ public class MainActivity extends Activity implements OnClickListener {
            }
        }
    }
+   public void onHttpInfoCallback(String info){
+       //TextView tv = (TextView)findViewById(R.id.recorder_http_info);
+       //tv.setText(info);
+       httpInfo = info;
+   }
+   public void onFmpegInfoCallback(String info){
+       ffmpegInfo = info;
+   }
+   public void onClickVideoSize(View v){
+       if( setimageWidth == 640 ){
+            setimageWidth = 480;
+           setimageHeight = 360;
+       }
+       else if( setimageWidth == 480 ){
+           setimageWidth = 320;
+          setimageHeight = 240;
+       }
+       else{
+           setimageWidth = 640;
+           setimageHeight = 480;
+       }       
+       btnVideoSize.setText(setimageWidth+"X"+setimageHeight);
+       //cameraView.changeSize();
+       
+   }
+   public void onClickRoom(View v){
+       room++;
+       if(room > 6){
+           room = 1;
+       }
+            
+       btnRoom.setText("room"+room);
+   }
+   public void onClickVideoSpeed(View v){
+       if( x264Speed.equals("medium")){
+           x264Speed = "faster";
+       }
+       else if( x264Speed.equals("faster")){
+           x264Speed = "veryfast";
+       }
+       else if( x264Speed.equals("veryfast")){
+           x264Speed = "superfast";
+       }
+       else if( x264Speed.equals("superfast")){
+           x264Speed = "ultrafast";
+       }
+       else{
+           x264Speed = "medium";
+       }       
+       btnVideoSpeed.setText(x264Speed);
+   }
+public void onClickVideoBitrate(View v){
+       
+        if( videoBitrate == 300000){
+            videoBitrate = 200000;
+        } 
+        else if( videoBitrate == 200000){
+            videoBitrate = 150000;
+        }
+        else if( videoBitrate == 150000){
+           videoBitrate = 100000;
+       }
+       else if( videoBitrate == 100000){
+           videoBitrate = 60000;
+       } 
+       else if( videoBitrate == 60000){
+           videoBitrate = 300000;
+       } 
+       btnVideoBitrate.setText(""+videoBitrate/1000);
+   }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -311,18 +412,26 @@ public class MainActivity extends Activity implements OnClickListener {
             startRecording();
             Log.w(LOG_TAG, "Start Button Pushed");
             btnRecorderControl.setText("停止");
+            btnRoom.setEnabled(false);
+            btnVideoSize.setEnabled(false);
+            btnVideoSpeed.setEnabled(false);
+            btnVideoBitrate.setEnabled(false);
         } else {
             // This will trigger the audio recording loop to stop and then set isRecorderStart = false;
             stopRecording();
             Log.w(LOG_TAG, "Stop Button Pushed");
             btnRecorderControl.setText("开始直播");
+            btnRoom.setEnabled(true);
+            btnVideoSize.setEnabled(true);
+            btnVideoSpeed.setEnabled(true);
+            btnVideoBitrate.setEnabled(true);
         }
     }
     public void startRecording() {
 
         try {
-            startRecorder();
-            
+            startRecorder("osd://live.yiqingart.com/file/video/room"+room+"/live.m3u8", x264Speed, setimageWidth, setimageHeight, videoBitrate);
+            //startRecorder("osd://192.168.1.10:8080/file/video/room"+room+"/live.m3u8", x264Speed, setimageWidth, setimageHeight, videoBitrate);
             startTime = System.currentTimeMillis();
             recording = true;
             //createAudioRecord();
@@ -388,6 +497,26 @@ public class MainActivity extends Activity implements OnClickListener {
             }
         }
 
+        public void changeSize(){
+            stopPreview();
+            Log.v(LOG_TAG,"change size");
+            Camera.Parameters camParams = mCamera.getParameters();
+            camParams.setPreviewSize(imageWidth, imageHeight);
+    
+            Log.v(LOG_TAG,"Preview Framerate: " + camParams.getPreviewFrameRate());
+    
+            camParams.setPreviewFrameRate(frameRate);
+            mCamera.setParameters(camParams);
+            try {
+
+                mCamera.setPreviewDisplay(mHolder);
+            }
+            catch (Exception e) {
+                Log.v(LOG_TAG,"setPreviewDisplay:" ,e);
+            }
+            startPreview();
+        }
+        
         public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             Log.v(LOG_TAG,"Setting imageWidth: " + imageWidth + " imageHeight: " + imageHeight + " frameRate: " + frameRate);
             Camera.Parameters camParams = mCamera.getParameters();
@@ -433,8 +562,13 @@ public class MainActivity extends Activity implements OnClickListener {
             if (recording) {
                 //Log.v(LOG_TAG,"Writing Frame:"+data.length);
                 try {
-                    long t = 1000 * (System.currentTimeMillis() - startTime);
-                    SupplyVideoFrame(data, data.length, t);
+                    long begin = System.currentTimeMillis();
+                    long t = 1000 * (begin - startTime);
+                    int pts = SupplyVideoFrame(data, data.length, t);
+                    //Long end = System.currentTimeMillis();
+                    tvRecorderHttpInfo.setText(httpInfo);
+                    tvRecorderFmpegInfo.setText(":"+pts);
+                    //tvRecorderFmpegInfo.setText(ffmpegInfo);
                 } catch (Exception e) {
                     Log.v(LOG_TAG,e.getMessage());
                     e.printStackTrace();
@@ -444,7 +578,7 @@ public class MainActivity extends Activity implements OnClickListener {
     }
     
     public native int  initRecorder();
-    public native int  startRecorder();
+    public native int  startRecorder(String url, String videoSpeed, int videoWidth, int videoHeight, int videoBitrate);
     public native int  stopRecorder();
     public native int  SupplyAudioSamples(short[] buffer, long len);
     public native int  SupplyVideoFrame(byte[] buffer, long len, long timestamp);

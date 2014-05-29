@@ -22,14 +22,17 @@ obj/local/armeabi/objs/recorder/recorder.o: jni/recorder.cpp \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/alloca.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/strings.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/memory.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/time.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sys/time.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/linux/time.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/siginfo.h \
+ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm-generic/siginfo.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/fcntl.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/linux/fcntl.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/fcntl.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm-generic/fcntl.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/unistd.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sys/select.h \
- E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sys/time.h \
- E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/linux/time.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/signal.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/limits.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sys/limits.h \
@@ -41,14 +44,11 @@ obj/local/armeabi/objs/recorder/recorder.o: jni/recorder.cpp \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/signal.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm-generic/signal.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/sigcontext.h \
- E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/siginfo.h \
- E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm-generic/siginfo.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sys/sysconf.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/linux/capability.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/pathconf.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/android/log.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/pthread.h \
- E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/time.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sched.h \
  jni/include/libavformat/avformat.h jni/include/libavcodec/avcodec.h \
  E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/errno.h \
@@ -124,6 +124,16 @@ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/
 
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/memory.h:
 
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/time.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sys/time.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/linux/time.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/siginfo.h:
+
+E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm-generic/siginfo.h:
+
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/fcntl.h:
 
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/linux/fcntl.h:
@@ -135,10 +145,6 @@ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/unistd.h:
 
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sys/select.h:
-
-E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sys/time.h:
-
-E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/linux/time.h:
 
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/signal.h:
 
@@ -162,10 +168,6 @@ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/
 
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/sigcontext.h:
 
-E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm/siginfo.h:
-
-E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/asm-generic/siginfo.h:
-
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sys/sysconf.h:
 
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/linux/capability.h:
@@ -175,8 +177,6 @@ E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/android/log.h:
 
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/pthread.h:
-
-E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/time.h:
 
 E:/adt-bundle-windows-x86-20130917/android-ndk-r9c/platforms/android-8/arch-arm/usr/include/sched.h:
 

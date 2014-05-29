@@ -1,9 +1,9 @@
 // compiles on MacOS X with: g++ -DTESTING VideoRecorder.cpp -o v -lavcodec -lavformat -lavutil -lswscale -lx264 -g
 
 #include <android/log.h>
-#define LOG(...) __android_log_print(ANDROID_LOG_INFO,"VideoRecorder",__VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,"VideoRecorder",__VA_ARGS__)
-
+#define LOG(...) __android_log_print(ANDROID_LOG_INFO,"JNIMsg",__VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,"JNIMsg",__VA_ARGS__)
+#include <time.h>
 #include "VideoRecorder.h"
 
 extern "C" {
@@ -25,18 +25,20 @@ public:
 	VideoRecorderImpl();
 	~VideoRecorderImpl();
 	
-	bool SetVideoOptions(VideoFrameFormat fmt, int width, int height, unsigned long bitrate, int framerate);
+	bool SetVideoOptions(VideoFrameFormat fmt, int width, int height, unsigned long bitrate, int framerate, const char *speed);
 	bool SetAudioOptions(AudioSampleFormat fmt, int channels, unsigned long samplerate, unsigned long bitrate);
 
 	bool Open(const char *mp4file, const char *format, bool hasAudio, bool dbg);
 	bool Close();
 	
 	bool Start();
+	long long getPts();
 
 	void SupplyVideoFrame(const void *frame, unsigned long numBytes, long long timestamp);
 	void SupplyAudioSamples(const void *samples, unsigned long numSamples);
 
 private:	
+	long long now_ms(void);
 	AVStream *add_audio_stream(enum AVCodecID codec_id);
 	void open_audio();	
 	void write_audio_frame(AVStream *st);
@@ -46,7 +48,9 @@ private:
 	void open_video();
 	void write_video_frame(AVStream *st);
 	pthread_mutex_t mtx ;  
-	
+
+	long long video_pts;
+	long long audio_pts;
 	// audio related vars
 	long long framecount;
 	AVFrame *frame;
@@ -76,6 +80,7 @@ private:
 	AVSampleFormat audio_sample_format;
 
 	// video related vars
+	char *video_speed;
 	uint8_t *video_outbuf;
 	int video_outbuf_size;
 	AVStream *video_st;
@@ -121,12 +126,16 @@ VideoRecorderImpl::VideoRecorderImpl()
 	oformat = NULL;
 
 	oc = NULL;
+	video_speed = NULL;
 	pthread_mutex_init(&mtx, NULL);
+	audio_pts = 0;
+	video_pts = 0;
 }
 
 VideoRecorderImpl::~VideoRecorderImpl()
 {
 	pthread_mutex_destroy(&mtx);
+	av_freep(&video_speed);
 }
 
 bool VideoRecorderImpl::Open(const char *mp4file, const char *format, bool hasAudio, bool dbg)
@@ -240,6 +249,19 @@ void VideoRecorderImpl::open_audio()
 
 }
 #endif
+long long VideoRecorderImpl::getPts()
+{
+	LOGE( "audio_pts:%lld video_pts:%lld", audio_pts, video_pts);
+	return video_pts;
+}
+long long  VideoRecorderImpl::now_ms(void) {
+
+    struct timespec res;
+    clock_gettime(CLOCK_REALTIME, &res);
+    return 1000.0 * res.tv_sec + (long long ) res.tv_nsec / 1e6;
+
+}
+
 void VideoRecorderImpl::open_audio()
 {
     AVCodecContext *c;
@@ -357,9 +379,12 @@ AVStream *VideoRecorderImpl::add_video_stream(enum AVCodecID codec_id)
 	st->id = oc->nb_streams-1;
 
 	c = st->codec;
-	av_opt_set(c->priv_data, "preset", "faster", 0);
+	if(video_speed){
+		av_opt_set(c->priv_data, "preset", video_speed, 0);
+	}
 	//av_opt_set(c->priv_data, "level", "ultrafast", 0);
 	av_opt_set(c->priv_data, "x264opts", "rc_lookahead=0:log=0", 0);
+	//av_opt_set(c->priv_data, "x264opts", "rc_lookahead=0", 0);
 	c->codec_id = codec_id;
 	c->codec_type = AVMEDIA_TYPE_VIDEO;
 
@@ -630,7 +655,7 @@ bool VideoRecorderImpl::Close()
 	return true;
 }
 
-bool VideoRecorderImpl::SetVideoOptions(VideoFrameFormat fmt, int width, int height, unsigned long bitrate, int framerate)
+bool VideoRecorderImpl::SetVideoOptions(VideoFrameFormat fmt, int width, int height, unsigned long bitrate, int framerate, const char *speed)
 {
 	switch(fmt) {
 		case VideoFrameFormatYUV420P: video_pixfmt=AV_PIX_FMT_YUV420P; break;
@@ -652,6 +677,8 @@ bool VideoRecorderImpl::SetVideoOptions(VideoFrameFormat fmt, int width, int hei
 	video_height = height;
 	video_bitrate = bitrate;
 	video_framerate = framerate;
+	video_speed = av_strdup(speed);
+	LOG("width:%d height:%d bitrate:%ld speed:%s\n", width, height, bitrate, speed );
 	return true;
 }
 
@@ -851,7 +878,7 @@ void VideoRecorderImpl::SupplyAudioSamples(const void *sampleData, unsigned long
 		if (pkt.dts != AV_NOPTS_VALUE)
 			pkt.dts = av_rescale_q(pkt.dts, st->codec->time_base,st->time_base);
 		//LOG("audio pkt.pts:%lld pkt.dts:%lld", pkt.pts, pkt.dts);
-
+		audio_pts = pkt.pts;
 		/* Write the compressed frame to the media file. */
 		pthread_mutex_lock(&mtx);
 		ret = av_interleaved_write_frame(oc, &pkt);
@@ -868,7 +895,7 @@ void VideoRecorderImpl::SupplyVideoFrame(const void *frameData, unsigned long nu
 {
 	static AVPacket pkt;
 	int ret, got_packet = 0;
-	long long tempPts;
+	long long tempPts, begin = 0, end = 0;
 		
 	if(!video_st) {
 		LOGE("tried to SupplyVideoFrame when no video stream was present\n");
@@ -885,7 +912,7 @@ void VideoRecorderImpl::SupplyVideoFrame(const void *frameData, unsigned long nu
 	AVCodecContext *c = video_st->codec;
 	
 	if(video_pixfmt != AV_PIX_FMT_YUV420P) {
-        avpicture_fill(&src_picture, (uint8_t *)frameData, video_pixfmt, c->width, c->height);
+        avpicture_fill(&src_picture, (uint8_t *)frameData, video_pixfmt, 640, 480);
 		sws_scale(img_convert_ctx, (const uint8_t * const *)src_picture.data, src_picture.linesize, 0, c->height, dst_picture.data, dst_picture.linesize);
 	}else
 	{
@@ -909,11 +936,14 @@ void VideoRecorderImpl::SupplyVideoFrame(const void *frameData, unsigned long nu
 		pkt.size = 0;
 		LOG("start video encoder");
         /* encode the image */
+		begin = now_ms();
         ret = avcodec_encode_video2(c, &pkt, tmp_picture, &got_packet);
         if (ret < 0) {
             LOGE("avcodec_encode_video2 error %d\n", ret);
 			return;
         }
+		end = now_ms();
+		video_pts = end-begin;
 		/* If size is zero, it means the image was buffered. */
         //LOG("avcodec_encode_video2 ret:%d got_packet:%d size:%d pts:%lld tempPts:%lld\n", ret, got_packet, pkt.size, tmp_picture->pts, tempPts);
 		tmp_picture->pts++;
@@ -926,7 +956,8 @@ void VideoRecorderImpl::SupplyVideoFrame(const void *frameData, unsigned long nu
 			}
 			//pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base, video_st->time_base);
 			//LOG("video pkt.pts:%lld pkt.dts:%lld", pkt.pts, pkt.dts);
-			
+
+			//video_pts = pkt.pts;
             pkt.stream_index = video_st->index;
 
             /* Write the compressed frame to the media file. */
